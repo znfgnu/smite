@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from collections import defaultdict
+
 from scipy import stats
 import numpy as np
 
@@ -70,14 +72,11 @@ def symbolic_mutual_information(symX, symY):
     
     MI = 0
 
-    for yi in list(pY.keys()):
-        for xi in list(pX.keys()):         
-            a = pX[xi]
-            b = pY[yi]
-            
+    for yi, b in pY.items():
+        for xi, a in pX.items():
             try:
-                c = jp[yi][xi]
-                MI += c * np.log(c /(a * b)) / np.log(len(symbols));
+                c = jp[yi,xi]
+                MI += c * np.log(c /(a * b)) / np.log(len(symbols))
             except KeyError:
                 continue
             except:
@@ -113,20 +112,17 @@ def symbolic_transfer_entropy(symX, symY):
     
     TE = 0
     
-    for yi in list(jp.keys()):
-        for xi in list(jp[yi].keys()):
-            for xii in list(jp[yi][xi].keys()):
-
-                try:
-                    a = cp[xi][xii]
-                    b = cp2[yi][xi][xii]
-                    c = jp[yi][xi][xii]
-                    TE += c * np.log(b / a) / np.log(2.);
-                except KeyError:
-                    continue
-                except:
-                    print("Unexpected Error")
-                    raise
+    for yi, xi, xii in list(jp.keys()):
+        try:
+            a = cp[xi,xii]
+            b = cp2[yi,xi,xii]
+            c = jp[yi,xi,xii]
+            TE += c * np.log(b / a) / np.log(2.)
+        except KeyError:
+            continue
+        except:
+            print("Unexpected Error")
+            raise
     del cp
     del cp2
     del jp
@@ -152,16 +148,13 @@ def symbolic_probabilities(symX):
     symX = np.array(symX)
     
     # initialize
-    p = {}
+    p = defaultdict(float)
     n = len(symX)
 
     for xi in symX:
-        if xi in p: 
-            p[xi] += 1.0 / n
-        else:
-            p[xi] = 1.0 / n
-    
-    return p
+        p[xi] += 1.0 / n
+
+    return dict(p)
 
 def symbolic_joint_probabilities(symX, symY):
     """
@@ -187,20 +180,13 @@ def symbolic_joint_probabilities(symX, symY):
     symY = np.array(symY)
     
     # initialize
-    jp = {}
+    jp = defaultdict(float)
     n = len(symX)
 
     for yi, xi in zip(symY,symX):
-        if yi in jp:
-            if xi in jp[yi]:
-                jp[yi][xi] += 1.0 / n
-            else:
-                jp[yi][xi] = 1.0 / n
-        else:
-            jp[yi] = {}
-            jp[yi][xi] = 1.0 / n
-    
-    return jp
+        jp[yi, xi] += 1.0 / n
+
+    return dict(jp)
 
 def symbolic_conditional_probabilities(symX, symY):
     """
@@ -225,28 +211,17 @@ def symbolic_conditional_probabilities(symX, symY):
     symY = np.array(symY)
     
     # initialize
-    cp = {}
-    n = {}
+    cp = defaultdict(float)
+    n = defaultdict(int)
 
-    for xi, yi in zip(symX,symY):
-        if yi in cp:
-            n[yi] += 1
-            if xi in cp[yi]:
-                cp[yi][xi] += 1.0
-            else:
-                cp[yi][xi] = 1.0
-        else:
-            cp[yi] = {}
-            cp[yi][xi] = 1.0
-            
-            n[yi] = 1
-
+    for xi, yi in zip(symX, symY):
+        n[yi] += 1
+        cp[yi, xi] += 1.0
         
-    for yi in list(cp.keys()):
-        for xi in list(cp[yi].keys()):
-            cp[yi][xi] /= n[yi]
+    for yi, xi in cp.keys():
+        cp[yi, xi] /= n[yi]
     
-    return cp
+    return dict(cp)
 
 def symbolic_conditional_probabilities_consecutive(symX):
     """
@@ -295,37 +270,17 @@ def symbolic_double_conditional_probabilities(symX, symY, symZ):
     symZ = np.array(symZ)
     
     # initialize
-    cp = {}
-    n = {}
+    cp = defaultdict(float)
+    n = defaultdict(int)
 
     for x, y, z in zip(symX,symY,symZ):
-        if y in cp:
-            if z in cp[y]:
-                n[y][z] += 1.0
-                if x in cp[y][z]:
-                    cp[y][z][x] += 1.0
-                else:
-                    cp[y][z][x] = 1.0
-            else:
-                cp[y][z] = {}
-                cp[y][z][x] = 1.0
-                n[y][z] = 1.0
-        else:
-            cp[y] = {}
-            n[y] = {}
-            
-            cp[y][z] = {}
-            n[y][z] = 1.0
-            
-            cp[y][z][x] = 1.0
-
+        cp[y,z,x] += 1.0
+        n[y,z] += 1
         
-    for y in list(cp.keys()):
-        for z in list(cp[y].keys()):
-            for x in list(cp[y][z].keys()):
-                cp[y][z][x] /= n[y][z]
+    for y,z,x in cp.keys():
+        cp[y,z,x] /= n[y,z]
     
-    return cp
+    return dict(cp)
 
 def symbolic_conditional_probabilities_consecutive_external(symX, symY):
     """
@@ -379,25 +334,13 @@ def symbolic_joint_probabilities_triple(symX, symY, symZ):
     symZ = np.array(symZ)
     
     # initialize
-    jp = {}
+    jp = defaultdict(float)
     n = len(symX)
 
     for x, y, z in zip(symX,symY,symZ):
-        if y in jp:
-            if z in jp[y]:
-                if x in jp[y][z]:
-                    jp[y][z][x] += 1.0 / n
-                else:
-                    jp[y][z][x] = 1.0 / n
-            else:                
-                jp[y][z] = {}
-                jp[y][z][x] = 1.0 / n
-        else:
-            jp[y] = {}
-            jp[y][z] = {}
-            jp[y][z][x] = 1.0 / n
-    
-    return jp
+        jp[y,z,x] += 1/n
+
+    return dict(jp)
 
 def symbolic_joint_probabilities_consecutive_external(symX, symY):
     """
